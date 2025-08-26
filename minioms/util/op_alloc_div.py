@@ -174,6 +174,11 @@ def merge_div_by_legacy_key_side_by_side(portfs_dtxns,dollar_div_alloc):
 	results = {}
 	for strat_portf in dollar_div_alloc.keys():
 		p_dtxns = portfs_dtxns[strat_portf]
+#D		print("#"*80)
+#D		print(strat_portf)
+#D		print(p_dtxns)
+#D		print(p_dtxns.df)
+#D		print("#"*80)
 		d_alloc = dollar_div_alloc[strat_portf]
 		errors,merged,side_by_side = merge_div_by_legacy_key_side_by_side_1_v2(p_dtxns, d_alloc)
 		if(merged is not None):

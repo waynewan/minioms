@@ -34,7 +34,9 @@ class io_utility:
 		if('dtxn_pkey' not in df0.columns):
 			df0['dtxn_pkey'] = None
 		# --
-		df0['legacy_key'] = df0[["type","pay_date","symbol"]].astype(str).agg("|".join,axis=1)
+		df0['legacy_key'] = None
+		if(len(df0)>0):
+			df0['legacy_key'] = df0[["type","pay_date","symbol"]].astype(str).agg("|".join,axis=1)
 		# --
 		if('unit' not in df0.columns):
 			df0['unit'] = None
