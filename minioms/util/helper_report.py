@@ -30,8 +30,9 @@ from jackutil import containerutil as cutil
 from pprint import pprint
 from pathlib import Path
 import re
-import financialmodelingprep as fmp
+# -- rm -- import financialmodelingprep as fmp
 from . import oms_io
+from .external_interface import mktprc_loader
 from itertools import product
 # --
 from simple_func import get_syst_var
@@ -66,16 +67,30 @@ def check_version(book_version,version):
 # --
 # --
 # --
-def FMP_API_KEY():
-	from apikey_financialmodelingprep import API_KEY
-	return API_KEY
+# -- rm -- __mktprc_loader__ = None
+# -- rm -- def set_mktprc_loader(loader):
+# -- rm -- 	global __mktprc_loader__
+# -- rm -- 	__mktprc_loader__ = loader
+# -- rm -- 
+# -- rm -- def mktprc_loader():
+# -- rm -- 	if(__mktprc_loader__ is None):
+# -- rm -- 		raise "ERR: __mktprc_loader__ not set"
+# -- rm -- 	return __mktprc_loader__
+
+# --
+# --
+# --
+# -- rm -- def FMP_API_KEY():
+# -- rm -- 	from apikey_financialmodelingprep import API_KEY
+# -- rm -- 	return API_KEY
 
 def load_market_price_impl(req_symbols,cached_data={}):
 	missing_symbols = req_symbols - cached_data.keys()
 	if(len(missing_symbols)>0):
 		# -- debug -- print(f"missing_symbols:{missing_symbols}")
 		price_data = retry(
-			lambda : fmp.get_simple_quote(FMP_API_KEY(),missing_symbols),
+			# -- rm -- lambda : fmp.get_simple_quote(FMP_API_KEY(),missing_symbols),
+			lambda : mktprc_loader().get_simple_quote(missing_symbols),
 			retry=10, pause=5, rtnEx=False, silent = False,
 		)
 		cached_data.update({ ii['symbol'] : ii for ii in price_data })
@@ -285,8 +300,10 @@ def db_path(*,db_folder=db_dir,account=None,strategy=None,book_name=None):
 # --
 # --
 def compute_benchmark_value_for_portf(*,symbol,fromDate,toDate=None,ndays=None):
-	raw0 = fmp.get_eod_hist(FMP_API_KEY(),symbol=symbol,fromDate=fromDate,toDate=toDate,ndays=ndays)
-	rtQuote = fmp.get_simple_quote(FMP_API_KEY(),[symbol])
+# -- rm -- 	raw0 = fmp.get_eod_hist(FMP_API_KEY(),symbol=symbol,fromDate=fromDate,toDate=toDate,ndays=ndays)
+# -- rm -- 	rtQuote = fmp.get_simple_quote(FMP_API_KEY(),[symbol])
+	raw0 = mktprc_loader().get_eod_hist(symbol=symbol,fromDate=fromDate,toDate=toDate,ndays=ndays)
+	rtQuote = mktprc_loader().get_simple_quote([symbol])
 	# print(rtQuote)
 	df0 = pd.DataFrame(raw0['historical']).set_index('date',drop=True).sort_index(ascending=True)
 	# print(df0.iloc[[0,-1]])

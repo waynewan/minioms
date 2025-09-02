@@ -16,8 +16,8 @@ from jackutil import containerutil as cutil
 # --
 from pprint import pprint
 from pathlib import Path
-from simple_func import convert_columns_to_string
-from simple_func import get_syst_var
+# -- rm -- from simple_func import convert_columns_to_string
+# -- rm -- from simple_func import get_syst_var
 from . import oms_io
 import gspread_util as gsu
 import sys
@@ -27,8 +27,8 @@ from datetime import datetime
 
 # --
 # --
-db_dir = get_syst_var("db_dir")
-svc_cred_fname = get_syst_var("google_svc_cred_filename")
+# -- rm -- db_dir = get_syst_var("db_dir")
+# -- rm -- svc_cred_fname = get_syst_var("google_svc_cred_filename")
 # --
 # --
 
@@ -39,8 +39,9 @@ def __p__(*args):
 # -- strategy = books.xml:/*/wb_name
 # -- book_name = books.xml:/*/sh_name
 # --
-# def read_db_path(*,db_folder="../../../algo-active/db",account=None,strategy=None,book_name=None):
-def read_db_path(*,db_folder=db_dir,account=None,strategy=None,book_name=None):
+# -- rm -- def read_db_path(*,db_folder="../../../algo-active/db",account=None,strategy=None,book_name=None):
+# -- rm -- def read_db_path(*,db_folder=db_dir,account=None,strategy=None,book_name=None):
+def read_db_path(*,db_folder,account=None,strategy=None,book_name=None):
 	portf_db_dir = None
 	if(book_name is not None):
 		portf_db_dir = f"{db_folder}/{strategy}/{book_name}"
@@ -56,7 +57,7 @@ def read_db_path(*,db_folder=db_dir,account=None,strategy=None,book_name=None):
 # --
 # --
 # --
-def open_workbook(wb_name):
+def open_workbook(svc_cred_fname,wb_name):
 	return gsu.authenticate_and_open_tradebook(svc_cred_fname, wb_name)
 
 def open_workbook2(gs_client, wb_name):
@@ -273,9 +274,9 @@ def insert_header_col(strategy,book_name,df0):
 # --
 # -- <strategy>-export_to_gspread.ipynb
 # --
-def export_books_to_gspread(*,db_folder,books):
+def export_books_to_gspread(*,db_folder,books,svc_cred_fname):
 	export_wb_name = books.portfolios[0]['wb_name2']
-	workbook = open_workbook(export_wb_name)
+	workbook = open_workbook(svc_cred_fname,export_wb_name)
 	# --
 	print(f"working ... {export_wb_name}/settings")
 	settings = load_setting_as_df(books,val_as_txt=True)
@@ -368,8 +369,8 @@ def load_all_orders(*,db_folder,dtstr=None):
 		all_orders = all_orders[all_orders['date']==dtstr]
 	return all_orders
 
-def export_orders_to_gspread(*,db_folder,dtstr=None):
-	workbook = open_workbook("tb2_tradebot")
+def export_orders_to_gspread(*,db_folder,dtstr=None,svc_cred_fname=None):
+	workbook = open_workbook(svc_cred_fname,"tb2_tradebot")
 	all_orders = load_all_orders(db_folder=db_folder,dtstr=dtstr)
 	write_orders_page(workbook, all_orders)
 
@@ -411,15 +412,15 @@ def load_all_blotters(*,db_folder):
 	all_blotters = all_blotters[[all_blotters.columns[-1]]+list(all_blotters.columns[:-1])]
 	return all_blotters
 
-def export_blotters_to_gspread(*,db_folder,am_pm="AM"):
-	workbook = open_workbook("tb2_tradebot")
+def export_blotters_to_gspread(*,db_folder,am_pm="AM",svc_cred_fname=None):
+	workbook = open_workbook(svc_cred_fname,"tb2_tradebot")
 	all_blotters = load_all_blotters(db_folder=db_folder)
 	write_blotters_page(workbook, all_blotters,am_pm)
 
 # --
 # --
 # --
-def write_symbol_to_market_pricer(*,inPos=None,tradeLst=None,index_n_ETF=None,miscSym=None):
+def write_symbol_to_market_pricer(*,inPos=None,tradeLst=None,index_n_ETF=None,miscSym=None,svc_cred_fname=None):
 	upd_batch = []
 	if(inPos is not None):
 		if(type(inPos)==type([])):
@@ -441,7 +442,7 @@ def write_symbol_to_market_pricer(*,inPos=None,tradeLst=None,index_n_ETF=None,mi
 		return
 	# --
 	pprint(upd_batch)
-	workbook = open_workbook("Market_Pricer_Sink")
+	workbook = open_workbook(svc_cred_fname,"Market_Pricer_Sink")
 	worksheet = workbook.worksheet("symbols")
 	retry(
 		lambda : worksheet.batch_update(upd_batch),
@@ -495,8 +496,8 @@ def load_all_execs(*,db_folder):
 	all_execs = all_execs[[all_execs.columns[-1]]+list(all_execs.columns[:-1])]
 	return all_execs
 
-def export_execs_to_gspread(*,db_folder):
-	workbook = open_workbook("tb2_tradebot")
+def export_execs_to_gspread(*,db_folder,svc_cred_fname):
+	workbook = open_workbook(svc_cred_fname,"tb2_tradebot")
 	all_execs = load_all_execs(db_folder=db_folder)
 	write_execs_page(workbook, all_execs)
 
@@ -657,6 +658,14 @@ def get_gsheet_last_update_time(workbook,sheet_name):
 # -- rm -- # -- 		last_update_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 # -- rm -- # -- 		update_maint_sheet(workbook, fname, last_update_time, max_last_mod_time.isoformat())
 # -- rm -- # -- 		gsu.move_worksheet_to_second_position(workbook, fname)
+
+def convert_columns_to_string(df):
+	for col in df.columns:
+		if not pd.api.types.is_numeric_dtype(df[col]) and not pd.api.types.is_datetime64_any_dtype(df[col]):
+			df[col] = df[col].astype(str).replace({'nan': '', 'NaN': ''})
+		else:
+			df[col] = df[col].fillna('').replace({'nan': '', 'NaN': ''})
+	return df
 
 def merge_csv_files_as_df(*, directories, fname):
 	all_data = []

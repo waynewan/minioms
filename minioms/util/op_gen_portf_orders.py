@@ -293,6 +293,7 @@ def portf_financial_summary(*,portf_settings=None,openpos=None,dividend_txn=None
 # --
 # --
 import financialmodelingprep as fmp
+from .external_interface import mktprc_loader
 from . import oms_io
 # --
 # --
@@ -333,7 +334,8 @@ def load_market_price_impl(req_symbols,cached_data={}):
 	if(len(missing_symbols)>0):
 		print(f"missing_symbols:{missing_symbols}")
 		price_data = retry(
-			lambda : fmp.get_simple_quote(FMP_API_KEY(),missing_symbols),
+			# -- rm -- lambda : fmp.get_simple_quote(FMP_API_KEY(),missing_symbols),
+			lambda : mktprc_loader().get_simple_quote(missing_symbols),
 			retry=10, pause=5, rtnEx=False, silent = False,
 		)
 		cached_data.update({ ii['symbol'] : ii for ii in price_data })
@@ -353,10 +355,10 @@ __abspath = os.path.abspath(__file__)
 __dirname = os.path.dirname(__abspath)
 common_dir = f"{__dirname}/../../../common"
 sys.path.append(f"{common_dir}/lib/quick_func")
-def FMP_API_KEY():
-	sys.path.append(f"{common_dir}/config/apikeys")
-	from apikey_financialmodelingprep import API_KEY
-	return API_KEY
+# -- rm -- def FMP_API_KEY():
+# -- rm -- 	sys.path.append(f"{common_dir}/config/apikeys")
+# -- rm -- 	from apikey_financialmodelingprep import API_KEY
+# -- rm -- 	return API_KEY
 
 def load_dividend(*,db_folder,strategy,book_name):
 	div_txn = oms_io.load_dividend__bk_dord(db_folder=db_folder,strategy=strategy,portfolio=book_name)
