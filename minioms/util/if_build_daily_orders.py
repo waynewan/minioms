@@ -1,5 +1,5 @@
-from .op_gen_account_orders import op_gen_account_orders 
-from .op_gen_portf_orders import op_gen_portf_orders 
+from .op_gen_account_orders import op_gen_account_orders
+from .op_gen_portf_orders import op_gen_portf_orders
 
 # --
 # -- portf orders

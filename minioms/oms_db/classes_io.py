@@ -398,6 +398,35 @@ class AcctPositions_IO(datafile.DataFile):
 # -- ---------------------------------------------------------------------------------
 # -- ---------------------------------------------------------------------------------
 # -- ---------------------------------------------------------------------------------
+class PortfSetting_IO(datafile.DataFile):
+	COLUMNS = ['value', 'dtype']
+
+	def __init__(self, db_dir, strategy,portfolio, df0: Optional[pd.DataFrame] = None, load=False, create=True):
+		self.strategy = strategy
+		self.portfolio = portfolio
+		self.db_dir = db_dir
+		directory = os.path.join(db_dir, strategy,portfolio)
+		if(load):
+			super().__init__(directory, filename="portf_setting.csv", columns=None, df0=None)
+			if(create):
+				super().read(drop=True,columns=self.COLUMNS,idx_col=[0])
+			else:
+				super().read(drop=True,idx_col=[0])
+		else:
+			super().__init__(directory, filename="portf_setting.csv", columns=PortfSetting_IO.COLUMNS, df0=df0)
+
+	def _type_validate_(data,raise_on_err=True):
+		matching_type = type(data)==PortfSetting_IO
+		if(matching_type):
+			return None
+		error = ValueError(f"Only applicable to {PortfSetting_IO} object")
+		if(raise_on_err):
+			raise error
+		return error
+		
+# -- ---------------------------------------------------------------------------------
+# -- ---------------------------------------------------------------------------------
+# -- ---------------------------------------------------------------------------------
 class PortfDailyOrders_IO(datafile.DataFile):
 	COLUMNS = ['book', 'portfolio', 'date', 'symbol', 'action', 'unit', 'price', 'linked_buy_pkey', 'pkey']
 

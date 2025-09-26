@@ -30,10 +30,13 @@ from jackutil import containerutil as cutil
 from pprint import pprint
 from pathlib import Path
 import re
-# -- rm -- import financialmodelingprep as fmp
 from . import oms_io
+from ..obj import PortfSetting
 from .external_interface import mktprc_loader
 from itertools import product
+from ..oms_db.classes_io import PortfSetting_IO
+from ..obj.PortfSetting import io_utility as portfset_io
+from ..obj.PortfSetting import br_utility as portfset_br
 # --
 from simple_func import get_syst_var
 db_dir = get_syst_var("db_dir")
@@ -51,45 +54,11 @@ def check_version(book_version,version):
 		raise Exception(f"book version is {book_version}; require version is {version} or above")
 	print(f"book version is {book_version}; require version is {version} or above")
 
-# -- rm -- def persist_portf_setting(*,db_folder,strategy,book_name,portf):
-# -- rm -- 	portf_folder = db_path(db_folder=db_folder,strategy=strategy,book_name=book_name)
-# -- rm -- 	with open(f"{portf_folder}/portf_setting.pk", "wb") as out:
-# -- rm -- 		pickle.dump(portf, out)
-# -- rm -- 	# --
-# -- rm -- 	# -- human readable format, not for processing
-# -- rm -- 	# --
-# -- rm -- 	with open(f"{portf_folder}/portf_setting.py", "wt") as out:
-# -- rm -- 		pprint(portf, out)
-# -- rm -- 	
-# -- rm -- def import_strategy(*,db_folder,book,version=None):
-# -- rm -- 	import_book(db_folder=db_folder,book=book, version=version)
-
-# --
-# --
-# --
-# -- rm -- __mktprc_loader__ = None
-# -- rm -- def set_mktprc_loader(loader):
-# -- rm -- 	global __mktprc_loader__
-# -- rm -- 	__mktprc_loader__ = loader
-# -- rm -- 
-# -- rm -- def mktprc_loader():
-# -- rm -- 	if(__mktprc_loader__ is None):
-# -- rm -- 		raise "ERR: __mktprc_loader__ not set"
-# -- rm -- 	return __mktprc_loader__
-
-# --
-# --
-# --
-# -- rm -- def FMP_API_KEY():
-# -- rm -- 	from apikey_financialmodelingprep import API_KEY
-# -- rm -- 	return API_KEY
-
 def load_market_price_impl(req_symbols,cached_data={}):
 	missing_symbols = req_symbols - cached_data.keys()
 	if(len(missing_symbols)>0):
 		# -- debug -- print(f"missing_symbols:{missing_symbols}")
 		price_data = retry(
-			# -- rm -- lambda : fmp.get_simple_quote(FMP_API_KEY(),missing_symbols),
 			lambda : mktprc_loader().get_simple_quote(missing_symbols),
 			retry=10, pause=5, rtnEx=False, silent = False,
 		)
@@ -112,38 +81,16 @@ def load_market_price(somepos,cache={},clear_cache=False):
 def load_tbsys_accounts(*,db_folder):
 	return oms_io.load_tbsys_accounts__bk_rpt(**locals())
 
-# -- rm -- def load_tbsys_accounts(*,db_folder):
-# -- rm -- 	sys_folder = db_path(db_folder=db_folder)
-# -- rm -- 	df0 = pd.read_csv(f"{sys_folder}/accounts.csv",index_col="line#")
-# -- rm -- 	return df0
-
 def load_tbsys_books(*,db_folder):
 	return oms_io.load_tbsys_books__bk_rpt(**locals())
-
-# -- rm -- def load_tbsys_books(*,db_folder):
-# -- rm -- 	sys_folder = db_path(db_folder=db_folder)
-# -- rm -- 	df0 = pd.read_csv(f"{sys_folder}/books.csv",index_col="line#")
-# -- rm -- 	return df0
 
 def load_tbsys_portfs(*,db_folder):
 	return oms_io.load_tbsys_portfs__bk_rpt(**locals())
 
-# -- rm -- def load_tbsys_portfs(*,db_folder):
-# -- rm -- 	sys_folder = db_path(db_folder=db_folder)
-# -- rm -- 	df0 = pd.read_csv(f"{sys_folder}/portfs.csv",index_col="line#")
-# -- rm -- 	return df0
-
 def load_daily_orders(*,db_folder,book,portf):
-# -- rm -- 	acc_folder = read_db_path(db_folder=db_folder,strategy=book,book_name=portf)
-# -- rm -- 	orders = pd.read_csv(f"{acc_folder}/daily_orders.csv",index_col=None)
 	orders = oms_io.load_daily_orders__bk_rpt(db_folder=db_folder,strategy=book,portfolio=portf)
 	orders = orders.iloc[:,1:]
 	return orders
-
-# -- rm -- def xxx load_account_orders(*,db_folder,account):
-# -- rm -- 	acc_folder = read_db_path(db_folder=db_folder,strategy=account)
-# -- rm -- 	orders = pd.read_csv(f"{acc_folder}/account_orders.csv",index_col=None)
-# -- rm -- 	return orders
 
 def load_account_orders(*,db_folder,account):
 	return oms_io.load_account_orders__bk_rpt(**locals())
@@ -151,23 +98,16 @@ def load_account_orders(*,db_folder,account):
 def load_account_positions(*,db_folder,account):
 	return oms_io.load_account_positions__bk_rpt(**locals())
 	
-# -- rm -- def load_account_positions(*,db_folder,account):
-# -- rm -- 	acc_folder = read_db_path(db_folder=db_folder,strategy=account)
-# -- rm -- 	positions = pd.read_csv(f"{acc_folder}/positions.csv",index_col=None)
-# -- rm -- 	return positions
-
-def load_portf_settings(*,db_folder,book,portf,from_pickle=False):
-	portf_folder = read_db_path(db_folder=db_folder,strategy=book,book_name=portf)
-	if(from_pickle):
-		with open(f"{portf_folder}/portf_setting.pk", "rb") as pk_file:
-			return pickle.load(pk_file)
-	else:
-		with open(f"{portf_folder}/portf_setting.py", "rt") as py_file:
-			return eval(py_file.read())
+# -- rm -- def load_portf_settings(*,db_folder,book,portf,from_pickle=False):
+# -- rm -- 	portf_folder = read_db_path(db_folder=db_folder,strategy=book,book_name=portf)
+# -- rm -- 	if(from_pickle):
+# -- rm -- 		with open(f"{portf_folder}/portf_setting.pk", "rb") as pk_file:
+# -- rm -- 			return pickle.load(pk_file)
+# -- rm -- 	else:
+# -- rm -- 		with open(f"{portf_folder}/portf_setting.py", "rt") as py_file:
+# -- rm -- 			return eval(py_file.read())
 
 def load_openpos(*,db_folder,strategy,book_name,incl_rt=True):
-# -- rm -- 	portf_folder = read_db_path(db_folder=db_folder,strategy=strategy,book_name=book_name)
-# -- rm -- 	openpos = pd.read_csv(f"{portf_folder}/open_pos.csv")
 	openpos = oms_io.load_open_pos__bk_rpt(db_folder=db_folder,strategy=strategy,portfolio=book_name)
 	summary = openpos.groupby("symbol").sum()["unit"]
 	if(incl_rt):
@@ -180,8 +120,6 @@ def load_openpos(*,db_folder,strategy,book_name,incl_rt=True):
 	return (openpos,mktval)
 
 def load_txns(*,db_folder,strategy,book_name,details_only=False,drop_cash_txn=True):
-# -- rm -- 	portf_folder = read_db_path(db_folder=db_folder,strategy=strategy,book_name=book_name)
-# -- rm -- 	txns = pd.read_csv(f"{portf_folder}/paired_txn.csv")
 	txns = oms_io.load_paired_txns_bk_rpt(db_folder=db_folder,strategy=strategy,portfolio=book_name)
 	if(drop_cash_txn):
 		txns = txns[ (txns['type']=='BUY') + (txns['type']=='SEL') ]
@@ -190,84 +128,12 @@ def load_txns(*,db_folder,strategy,book_name,details_only=False,drop_cash_txn=Tr
 	balance = txns['cost'].sum()
 	return txns,balance
 
-# -- rm -- def load_dividend(*,db_folder,strategy,book_name,details_only=False):
-# -- rm -- 	portf_folder = read_db_path(db_folder=db_folder,strategy=strategy,book_name=book_name)
-# -- rm -- 	try:
-# -- rm -- 		dividend = pd.read_csv(f"{portf_folder}/dividend_txn.csv")
-# -- rm -- 		if(details_only):
-# -- rm -- 			return dividend
-# -- rm -- 		ttl_divy = dividend['amount'].sum()
-# -- rm -- 		return dividend,ttl_divy
-# -- rm -- 	except:
-# -- rm -- 		return None,0
-
 def load_dividend(*,db_folder,strategy,book_name,details_only=False):
 	dividend = oms_io.load_dividend__bk_rpt(db_folder=db_folder,strategy=strategy,portfolio=book_name)
 	if(details_only):
 		return dividend
 	ttl_divy = dividend['amount'].sum()
 	return dividend,ttl_divy
-
-def extractValue(dict_flattened=None,partial_key=None,regex_key=None,exact_key=None,rtn_first=True,optional=False,defval=None):
-	matched_keys = None
-	if(regex_key is not None):
-		search_regex = re.compile(regex_key)
-		matched_keys = filter(lambda kk : search_regex.match(kk), dict_flattened)
-	elif(partial_key is not None):
-		matched_keys = filter(lambda kk : partial_key in kk, dict_flattened)
-	else:
-		matched_keys = filter(lambda kk : exact_key==kk, dict_flattened)
-	if(rtn_first):
-		try:
-			matched_key = next(matched_keys)
-			return dict_flattened[matched_key]
-		except StopIteration as iex:
-			if(optional):
-				return defval
-			raise Exception(f"no such key: exact_key={exact_key};partial_key={partial_key};regex_key={regex_key}")
-	else:
-		return { kk : dict_flattened[kk] for kk in matched_keys }
-
-def get_def_benchmark(*,book):
-	def_benchmark = book
-	if(book.endswith("n100")):
-		def_benchmark = "QQQ"
-	elif(book.endswith("s500")):
-		def_benchmark = "SPY"
-	elif(book.endswith("r1000")):
-		def_benchmark = "IWB"
-	return def_benchmark
-
-def portf_basic_info(*,portf_settings=None,flattened=None,optional={}):
-	if(flattened is None):
-		flattened = cutil.flattenContainer(portf_settings)
-	keys = {
-		"name":"name",
-		".*wb_name":"book",
-		".*sh_name":"portf",
-		".*portf_benchmark":"benchmark",
-		".*portf_start_date":"start_date",
-		".*portf_start_principle":"principle",
-		".*maxpos":"maxpos",
-	}
-	basic_info = {}
-	for key,val in keys.items():
-		if(val in optional):
-			defval = optional[val]
-			basic_info[val] = extractValue(
-				dict_flattened=flattened,
-				regex_key=key,
-				rtn_first=True,
-				optional=True,
-				defval=defval,
-			)
-		else:
-			basic_info[val] = extractValue(
-				dict_flattened=flattened,
-				regex_key=key,
-				rtn_first=True,
-			)
-	return basic_info
 
 # --
 # --
@@ -300,8 +166,6 @@ def db_path(*,db_folder=db_dir,account=None,strategy=None,book_name=None):
 # --
 # --
 def compute_benchmark_value_for_portf(*,symbol,fromDate,toDate=None,ndays=None):
-# -- rm -- 	raw0 = fmp.get_eod_hist(FMP_API_KEY(),symbol=symbol,fromDate=fromDate,toDate=toDate,ndays=ndays)
-# -- rm -- 	rtQuote = fmp.get_simple_quote(FMP_API_KEY(),[symbol])
 	raw0 = mktprc_loader().get_eod_hist(symbol=symbol,fromDate=fromDate,toDate=toDate,ndays=ndays)
 	rtQuote = mktprc_loader().get_simple_quote([symbol])
 	# print(rtQuote)
@@ -316,8 +180,8 @@ def compute_benchmark_value_for_portf(*,symbol,fromDate,toDate=None,ndays=None):
 
 def publish_portfolio_to_gspread(*,db_folder,strategy,market,portf):
 	book = f"{strategy}_{market}"
-	settings = load_portf_settings(db_folder=db_folder,book=book,portf=portf)
-	basic_info = portf_basic_info(portf_settings=settings,optional={"benchmark":get_def_benchmark(book=market)})
+	settings = portfset_io.load(db_dir=db_folder,strategy=book,portfolio=portf)
+	basic_info = portfset_br.basic_info_from(portf_setting=settings,optional={"benchmark":portfset_br.get_def_benchmark(book=market)})
 	_,dividend = load_dividend(db_folder=db_folder,strategy=book,book_name=portf)
 	_,txn_balance = load_txns(db_folder=db_folder,strategy=book,book_name=portf)
 	openpos,pos_summary = load_openpos(db_folder=db_folder,strategy=book,book_name=portf)
@@ -481,12 +345,6 @@ def load_account_blotter(*,db_folder,account):
 def load_openpos_for_portf(*,db_folder,book,portf):
 	openpos = load_openpos(db_folder=db_folder,strategy=book,book_name=portf,incl_rt=False)
 	return openpos[1].iloc[:,:2]
-
-# -- rm -- def xxx load_other_holdings_for_acct(*,db_folder,account):
-# -- rm -- 	acc_folder = read_db_path(db_folder=db_folder,account=account)
-# -- rm -- 	holding = pd.read_csv(f"{acc_folder}/other_holdings.csv",index_col="line#")
-# -- rm -- 	holding.columns = ['symbol','other_holding','note']
-# -- rm -- 	return holding.iloc[:,:2]
 
 def load_other_holdings_for_acct(*,db_folder,account):
 	return oms_io.load_other_holdings_for_acct__bk_rpt(**locals())
