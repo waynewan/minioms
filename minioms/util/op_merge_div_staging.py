@@ -25,7 +25,10 @@ class op_merge_div_staging:
 		types_validate(acctdtxns,msg="acctdtxns",types=[ AcctDividendTxns_IO ],allow_none=False)
 		types_validate(staging,msg="staging",types=[ DividendTxnsStaging_IO ],allow_none=False)
 		# --
-		if(len(acctdtxns.df)==0):
+		# !! (HUM) PENDING_TEST: remove comment after test !!
+		# -- (HUM) BUGFIX was "if(len(acctdtxns.df)==0):"
+		# --
+		if(len(staging.df)==0):
 			# --
 			# -- special case, no staging entries
 			# --
@@ -73,7 +76,7 @@ def accept_div_txns_merge(side_by_side):
 		for err in errors:
 			print(err)
 		raise ValueError(errors)
-		# return errors,None
+		# (HUM) pending_rm ; this is commented out code # return errors,None  # (CLU) NEED_REVIEW: dead code after raise, safe to remove
 	# --
 	# -- merge *_new fold into *_file, then remove suffix
 	# --
@@ -97,6 +100,7 @@ def accept_div_txns_merge(side_by_side):
 def merged_dividend_txns_validation(merged):
 	errors = []
 	# --
+	# (HUM) pending_rm ; unimportant # (CLU) NEED_REVIEW: np.max/np.min used on pandas Series — pandas .max()/.min() would be more idiomatic here.
 	last_local_txn_date = np.max(merged[merged['Symbol_file'] !='']['Date_file'])
 	missing_local = merged[
 		(merged['Date_new'] < last_local_txn_date) *
@@ -110,8 +114,8 @@ def merged_dividend_txns_validation(merged):
 	# --
 	first_remote_txn_date = np.min(merged[merged['Symbol_new'] !='']['Date_new'])
 	missing_remote = merged[
-		(merged['Date_new'] > first_remote_txn_date) *
-		(merged['Symbol_new']=='') * 
+		(merged['Date_new'] >= first_remote_txn_date) *
+		(merged['Symbol_new']=='') *
 		(merged['Symbol_file'] !='')
 	]
 	if(len(missing_remote)>0):

@@ -37,6 +37,9 @@ class op_alloc_exec:
 		return impl__post_process_account(allocations,portfs_ptxns)
 
 	def validate(alloc_results,raise_on_err=True):
+		# --
+		# (HUM) TODO: add implmentation
+		# --
 		return True
 
 	def commit_result(alloc_results):
@@ -85,7 +88,7 @@ def post_allocation_to_portf(allocations,paired_txn):
 	# -- format allocation to match paired_txn
 	# --
 	allocations.loc[:,'linked_sell_txn'] = "--"
-	allocations.rename(inplace=True,columns={
+	allocations.rename(inplace=True,errors='raise',columns={
 		'action':'type',
 		'exec_price':'entry price'
 	})
@@ -105,22 +108,15 @@ def post_allocation_to_portf(allocations,paired_txn):
 	# --
 	# -- merge [old, new] paired txns
 	# --
-	# ?? side_by_side = pd.merge(paired_txn,fmt_alloc,how="outer",on="pkey",suffixes=['','_fmt_alloc'])
-	# ?? display(side_by_side.tail())
 	paired_txn = pd.concat([paired_txn,fmt_alloc],axis=0)
 	is_valid,error = paired_txn_validation(paired_txn)
 	if(not is_valid):
 		return (None, paired_txn, error)
 	else:
-		# -- write_paired_txn(db_folder=db_folder,strategy=book,book_name=portfolio,paired_txn=paired_txn)
 		# --
 		# -- write open pos based on the combined paired_txn list
 		# --
 		open_pos = extract_openpos(paired_txn)
-		# -- write_open_pos(db_folder=db_folder,strategy=book,book_name=portfolio,open_pos=open_pos)
-		# --
-		# -- 
-		# --
 		return (open_pos, paired_txn, error)
 
 def replace_portf_alloc_pkey(alloc):
@@ -131,17 +127,26 @@ def replace_portf_alloc_pkey(alloc):
 		rr['action'],
 		f"{abs(rr['unit'])}"
 	]),axis=1)
+	# --
+	# -- (HUM) using 'outer' may introduce NaN, which is expected
+	# --
 	working = pd.merge(alloc,working,how='outer',on=['date','symbol','action'],suffixes=['','_working'])
-	working.rename(inplace=True,columns={
+	working.rename(inplace=True,errors='raise',columns={
 		'pkey':'ord_pkey',
 		'aggr_pkey':'pkey'
 	})
 	return working
 
 def paired_txn_validation(txn):
+	# --
+	# (HUM) TODO: add implmentation
+	# --
 	return True,{}
 
 def extract_openpos(paired_txn):
+	# --
+	# (HUM) pending_rm : using logical_and is better, '&' intend is unclear
+	# --
 	open_pos = paired_txn[np.logical_and(paired_txn["type"]=="BUY",paired_txn["linked_sell_txn"]=="--")]
 	open_pos = open_pos.drop(columns=["linked_sell_txn"])
 	return open_pos

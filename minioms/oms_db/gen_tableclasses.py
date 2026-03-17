@@ -111,6 +111,7 @@ if __name__ == '__main__':
 		( [ "account" ], None, DEF_IDX0, "Matchings", "matching.csv", "date,symbol,ord_qty,exec_qty,exec_price,ttl_cost,match,exec_pkey" ), # account
 		( [ "account" ], None, DEF_IDX,  "OtherHoldings", "other_holdings.csv", "line#,symbol,quantity,note" ), # account
 		( [ "account" ], None, DEF_IDX,  "AcctPositions", "positions.csv", "line#,Symbol,Desc,Last Price,Price Change,$ Gain/Loss,% Gain/Loss,$ Total Gain/Loss,% Total Gain/Loss,Current Value,% of Account,Quantity,Per Share,Total Cost,52w lo,52w hi" ), # account
+		( [ "account" ], None, DEF_IDX, "AcctPositionReport", "position_report.csv", "line#,index,account_holding,portfs_holding,other_holding,holding_diff" ), # account
 		# --
 		( [ "strategy", "portfolio" ], None, DEF_IDX0, "PortfSetting", "portf_setting.csv", "value,dtype" ), # portfolio
 		( [ "strategy", "portfolio" ], None, DEF_IDX0, "PortfDailyOrders", "daily_orders.csv", "book,portfolio,date,symbol,action,unit,price,linked_buy_pkey,pkey" ), # portfolio

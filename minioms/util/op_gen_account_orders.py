@@ -1,21 +1,11 @@
-from ..oms_db.classes_io import PortfDailyOrders_IO
 from ..obj.PortfDailyOrders import io_utility as portfdord_io
-from ..obj.PortfDailyOrders import br_utility as portfdord_br
-from ..oms_db.classes_io import Accounts_IO
 from ..obj.Accounts import io_utility as acct_io
-from ..obj.Accounts import br_utility as acct_br
-from ..oms_db.classes_io import Portfolios_IO
 from ..obj.Portfolios import io_utility as portf_io
 from ..obj.Portfolios import br_utility as portf_br
 from ..oms_db.classes_io import AcctDailyOrders_IO
 from ..oms_db.classes_io import AccountOrders_IO
 from jackutil.microfunc import types_validate
-from jackutil.microfunc import dt_to_str,str_to_dt,retry
-import jackutil.containerutil as cutil
-import datetime
-from copy import copy
 import pandas as pd
-import numpy as np
 
 class op_gen_account_orders:
 	def load_required_objects(*,db_dir,account=None):

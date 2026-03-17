@@ -10,8 +10,8 @@ def gen_orders_for_book_v5(*,db_dir,book):
 
 def pprint_book_orders(book_orders):
 	for k,v in book_orders.items():
-	 	print("#",k,"#"*80)
-	 	print(v['instructions'])
+		print("#",k,"#"*80)
+		print(v['instructions'])
 
 # --
 # -- account orders
@@ -28,8 +28,8 @@ def pprint_all_accounts_orders(results):
 		print(acct)
 		print("#"*120)
 		if(portfs_dords !=(None,None)):
-			display(portfs_dords[0].df)
-			display(portfs_dords[1].df)
+			print(portfs_dords[0].df.to_string())
+			print(portfs_dords[1].df.to_string())
 		else:
-			display(portfs_dords)
+			print(portfs_dords)
 

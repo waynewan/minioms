@@ -1,5 +1,6 @@
 from .op_exec_match import op_exec_match
 from .op_alloc_exec import op_alloc_exec
+from .helper_debug import print_oms_io_objects, display_objects
 
 def post_process_account(db_dir,account,auto_commit=True):
 	# --
@@ -9,8 +10,8 @@ def post_process_account(db_dir,account,auto_commit=True):
 	matching_results = op_exec_match.exec_match(*objects_for_match)
 	try:
 		op_exec_match.validate(matching_results)
-	except:
-		display(objects_for_match)
+	except Exception:
+		display_objects(objects_for_match)
 		raise
 	if(auto_commit):
 		op_exec_match.commit_result(matching_results)
@@ -22,14 +23,19 @@ def post_process_account(db_dir,account,auto_commit=True):
 	alloc_results = op_alloc_exec.alloc_exec(*objects_for_post)
 	try:
 		op_alloc_exec.validate(alloc_results)
-	except:
-		display(objects_for_post)
+	except Exception:
+		display_objects(objects_for_post)
 		raise
 	if(auto_commit):
 		op_alloc_exec.commit_result(alloc_results)
 		
 	return matching_results, alloc_results
 
+# --
+# -- is_API: True
+# -- used by "_08_pm_post_processing"
+# -- this is for jupyter notebook only
+# --
 def display_results(results):
 	matching_results, alloc_results = results
 	print("#"*120)

@@ -398,6 +398,34 @@ class AcctPositions_IO(datafile.DataFile):
 # -- ---------------------------------------------------------------------------------
 # -- ---------------------------------------------------------------------------------
 # -- ---------------------------------------------------------------------------------
+class AcctPositionReport_IO(datafile.DataFile):
+	COLUMNS = ['line#', 'index', 'account_holding', 'portfs_holding', 'other_holding', 'holding_diff']
+
+	def __init__(self, db_dir, account, df0: Optional[pd.DataFrame] = None, load=False, create=True):
+		self.account = account
+		self.db_dir = db_dir
+		directory = os.path.join(db_dir, account)
+		if(load):
+			super().__init__(directory, filename="position_report.csv", columns=None, df0=None)
+			if(create):
+				super().read(drop=True,columns=self.COLUMNS,idx_col=['line#'])
+			else:
+				super().read(drop=True,idx_col=['line#'])
+		else:
+			super().__init__(directory, filename="position_report.csv", columns=AcctPositionReport_IO.COLUMNS, df0=df0)
+
+	def _type_validate_(data,raise_on_err=True):
+		matching_type = type(data)==AcctPositionReport_IO
+		if(matching_type):
+			return None
+		error = ValueError(f"Only applicable to {AcctPositionReport_IO} object")
+		if(raise_on_err):
+			raise error
+		return error
+		
+# -- ---------------------------------------------------------------------------------
+# -- ---------------------------------------------------------------------------------
+# -- ---------------------------------------------------------------------------------
 class PortfSetting_IO(datafile.DataFile):
 	COLUMNS = ['value', 'dtype']
 

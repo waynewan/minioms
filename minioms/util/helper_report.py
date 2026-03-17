@@ -2,46 +2,49 @@ import locale
 locale.setlocale(locale.LC_ALL, 'en_US.UTF8')
 # --
 import sys
-import os 
-
-# !!
-# !! this is a bad idea, possible solution, 
-# !! publish the library (oms) as a package 
-# !!
-__abspath = os.path.abspath(__file__)
-__dirname = os.path.dirname(__abspath)
-common_dir = f"{__dirname}/../../../../../common"
-sys.path.append(f"{common_dir}/lib/quick_func")
-print(common_dir)
+# -- (HUM) REVIEWED;pending_rm -- # (CLU) NEED_REVIEW: os is only used by the sys.path.append scaffolding block below
+# -- (HUM) REVIEWED;pending_rm -- # (CLU) NEED_REVIEW: (marked REVIEWED;pending_rm). Once that block is removed, os
+# -- (HUM) REVIEWED;pending_rm -- # (CLU) NEED_REVIEW: becomes an orphaned import and should be removed alongside it.
+# -- (HUM) REVIEWED;pending_rm -- import os
+# -- (HUM) REVIEWED;pending_rm -- # !!
+# -- (HUM) REVIEWED;pending_rm -- # !! this is a bad idea, possible solution,
+# -- (HUM) REVIEWED;pending_rm -- # !! publish the library (oms) as a package
+# -- (HUM) REVIEWED;pending_rm -- # !!
+# -- (HUM) REVIEWED;pending_rm -- # (CLU) NEED_REVIEW: sys.path.append at module level is an import-time side effect and
+# -- (HUM) REVIEWED;pending_rm -- # (CLU) NEED_REVIEW: fragile (relies on relative directory traversal). The same pattern
+# -- (HUM) REVIEWED;pending_rm -- # (CLU) NEED_REVIEW: exists in op_gen_portf_orders.py and was removed there.
+# -- (HUM) REVIEWED;pending_rm -- # (CLU) NEED_REVIEW: Fix: publish minioms as a proper package (as the !! note above suggests),
+# -- (HUM) REVIEWED;pending_rm -- # (CLU) NEED_REVIEW: then remove these four lines and the sys/os imports if no longer needed.
+# -- (HUM) REVIEWED;pending_rm -- __abspath = os.path.abspath(__file__)
+# -- (HUM) REVIEWED;pending_rm -- __dirname = os.path.dirname(__abspath)
+# -- (HUM) REVIEWED;pending_rm -- common_dir = f"{__dirname}/../../../../../common"
+# -- (HUM) REVIEWED;pending_rm -- sys.path.append(f"{common_dir}/lib/quick_func")
 # --
-import pickle
-import time
 import pandas as pd
 import numpy as np
 import datetime
-from collections import defaultdict
 pd.set_option('display.max_colwidth', None)
 pd.set_option('display.max_columns', None)
 pd.set_option('display.max_rows', None)
 pd.set_option('display.expand_frame_repr', False)
-from jackutil.microfunc import retry
-from jackutil import containerutil as cutil
 # --
-from pprint import pprint
-from pathlib import Path
 import re
-from . import oms_io
-from ..obj import PortfSetting
-from .external_interface import mktprc_loader
+from .external_interface import mktprc_loader, load_market_price, load_market_price_impl
 from itertools import product
-from ..oms_db.classes_io import PortfSetting_IO
 from ..obj.PortfSetting import io_utility as portfset_io
 from ..obj.PortfSetting import br_utility as portfset_br
+from ..obj.Accounts import io_utility as acct_u_io
+from ..obj.Books import io_utility as books_u_io
+from ..obj.Portfolios import io_utility as portfs_u_io
+from ..obj.PortfDailyOrders import io_utility as portfdord_u_io
+from ..obj.AcctPositions import io_utility as acctpos_u_io
+from ..obj.PortfPositions import io_utility as portfpos_u_io
+from ..obj.PairedTxns import io_utility as pairedtxns_u_io
+from ..obj.PortfDividendTxns import io_utility as portfdtxns_u_io
+from ..obj.OtherHoldings import io_utility as othh_u_io
+from ..obj.OtherHoldings import br_utility as othh_u_br
+from ..obj.AcctPositionReport import io_utility as acctposrpt_u_io
 # --
-from simple_func import get_syst_var
-db_dir = get_syst_var("db_dir")
-
-import gspread_util as gsu 
 
 def __p__(*args):
 	print(*args)
@@ -49,66 +52,50 @@ def __p__(*args):
 # --
 # --
 # --
+
+def __load_other_holdings_for_acct__bk_rpt(*,db_folder,account):
+	from ..oms_db import classes_io as oio
+	other_holdings = oio.OtherHoldings_IO(
+		db_dir=db_folder,
+		account=account,
+		load=True
+	)
+	return othh_u_br.group_by_symbol(
+			othh_u_io.bookkeeper_report_load_wrapper(
+				other_holdings.df.copy()
+			)
+		)
+
 def check_version(book_version,version):
 	if(version>book_version):
 		raise Exception(f"book version is {book_version}; require version is {version} or above")
 	print(f"book version is {book_version}; require version is {version} or above")
 
-def load_market_price_impl(req_symbols,cached_data={}):
-	missing_symbols = req_symbols - cached_data.keys()
-	if(len(missing_symbols)>0):
-		# -- debug -- print(f"missing_symbols:{missing_symbols}")
-		price_data = retry(
-			lambda : mktprc_loader().get_simple_quote(missing_symbols),
-			retry=10, pause=5, rtnEx=False, silent = False,
-		)
-		cached_data.update({ ii['symbol'] : ii for ii in price_data })
-	result = [ cached_data[sym] for sym in set(req_symbols) ]
-	return result
-
-def load_market_price(somepos,cache={},clear_cache=False):
-	if(clear_cache):
-		cache.clear()
-		return None
-	symbols = somepos['symbol'].to_list()
-	if(len(symbols)==0):
-		symbols = ["QQQ"]
-	price_data = load_market_price_impl(symbols,cache)
-	price_data = pd.DataFrame(price_data).set_index('symbol',drop=True)
-	somepos = somepos.join(other=price_data['price'], on="symbol", how="left")
-	return somepos
 
 def load_tbsys_accounts(*,db_folder):
-	return oms_io.load_tbsys_accounts__bk_rpt(**locals())
+	return acct_u_io.load(db_dir=db_folder).df.copy()
 
-def load_tbsys_books(*,db_folder):
-	return oms_io.load_tbsys_books__bk_rpt(**locals())
+# -- (HUM) REVIEWED;pending_rm -- # (CLU) NEED_REVIEW: load_tbsys_books has no callers in the util directory.
+# -- (HUM) REVIEWED;pending_rm -- # (CLU) NEED_REVIEW: Verify whether it is called externally (e.g. notebooks, scripts).
+# -- (HUM) REVIEWED;pending_rm -- # (CLU) NEED_REVIEW: If not, remove it and the books_u_io import.
+# -- (HUM) REVIEWED;pending_rm -- def load_tbsys_books(*,db_folder):
+# -- (HUM) REVIEWED;pending_rm -- 	return books_u_io.load(db_dir=db_folder).df.copy()
 
 def load_tbsys_portfs(*,db_folder):
-	return oms_io.load_tbsys_portfs__bk_rpt(**locals())
+	return portfs_u_io.load(db_dir=db_folder).df.copy()
 
 def load_daily_orders(*,db_folder,book,portf):
-	orders = oms_io.load_daily_orders__bk_rpt(db_folder=db_folder,strategy=book,portfolio=portf)
+	orders = portfdord_u_io.load(db_dir=db_folder,strategy=book,portfolio=portf).df.copy()
 	orders = orders.iloc[:,1:]
 	return orders
 
-def load_account_orders(*,db_folder,account):
-	return oms_io.load_account_orders__bk_rpt(**locals())
 
 def load_account_positions(*,db_folder,account):
-	return oms_io.load_account_positions__bk_rpt(**locals())
+	return acctpos_u_io.load(db_dir=db_folder,account=account).df.copy()
 	
-# -- rm -- def load_portf_settings(*,db_folder,book,portf,from_pickle=False):
-# -- rm -- 	portf_folder = read_db_path(db_folder=db_folder,strategy=book,book_name=portf)
-# -- rm -- 	if(from_pickle):
-# -- rm -- 		with open(f"{portf_folder}/portf_setting.pk", "rb") as pk_file:
-# -- rm -- 			return pickle.load(pk_file)
-# -- rm -- 	else:
-# -- rm -- 		with open(f"{portf_folder}/portf_setting.py", "rt") as py_file:
-# -- rm -- 			return eval(py_file.read())
 
 def load_openpos(*,db_folder,strategy,book_name,incl_rt=True):
-	openpos = oms_io.load_open_pos__bk_rpt(db_folder=db_folder,strategy=strategy,portfolio=book_name)
+	openpos = portfpos_u_io.load(db_dir=db_folder,strategy=strategy,portfolio=book_name).df.reset_index(drop=True)
 	summary = openpos.groupby("symbol").sum()["unit"]
 	if(incl_rt):
 		mktval = load_market_price(pd.DataFrame(summary).reset_index(inplace=False))
@@ -120,7 +107,7 @@ def load_openpos(*,db_folder,strategy,book_name,incl_rt=True):
 	return (openpos,mktval)
 
 def load_txns(*,db_folder,strategy,book_name,details_only=False,drop_cash_txn=True):
-	txns = oms_io.load_paired_txns_bk_rpt(db_folder=db_folder,strategy=strategy,portfolio=book_name)
+	txns = pairedtxns_u_io.load(db_dir=db_folder,strategy=strategy,portfolio=book_name).df.copy()
 	if(drop_cash_txn):
 		txns = txns[ (txns['type']=='BUY') + (txns['type']=='SEL') ]
 	if(details_only):
@@ -129,42 +116,12 @@ def load_txns(*,db_folder,strategy,book_name,details_only=False,drop_cash_txn=Tr
 	return txns,balance
 
 def load_dividend(*,db_folder,strategy,book_name,details_only=False):
-	dividend = oms_io.load_dividend__bk_rpt(db_folder=db_folder,strategy=strategy,portfolio=book_name)
+	dividend = portfdtxns_u_io.load(db_dir=db_folder,strategy=strategy,portfolio=book_name).df.copy()
 	if(details_only):
 		return dividend
 	ttl_divy = dividend['amount'].sum()
 	return dividend,ttl_divy
 
-# --
-# --
-# --
-def read_db_path(*,db_folder=db_dir,account=None,strategy=None,book_name=None):
-	portf_db_dir = None
-	if(book_name is not None):
-		portf_db_dir = f"{db_folder}/{strategy}/{book_name}"
-	elif(account is not None):
-		portf_db_dir = f"{db_folder}/{account}"
-	elif(strategy is not None):
-		portf_db_dir = f"{db_folder}/{strategy}"
-	else:
-		portf_db_dir = f"{db_folder}/_tbsys_"
-	# --
-	return portf_db_dir
-
-def db_path(*,db_folder=db_dir,account=None,strategy=None,book_name=None):
-	portf_db_dir = None
-	if(strategy is None and book_name is None):
-		portf_db_dir = f"{db_folder}/_tbsys_"
-	elif(book_name is None):
-		portf_db_dir = f"{db_folder}/{strategy}"
-	else:
-		portf_db_dir = f"{db_folder}/{strategy}/{book_name}"
-	# --
-	Path(portf_db_dir).mkdir(parents=True, exist_ok=True)
-	return portf_db_dir
-# --
-# --
-# --
 def compute_benchmark_value_for_portf(*,symbol,fromDate,toDate=None,ndays=None):
 	raw0 = mktprc_loader().get_eod_hist(symbol=symbol,fromDate=fromDate,toDate=toDate,ndays=ndays)
 	rtQuote = mktprc_loader().get_simple_quote([symbol])
@@ -270,13 +227,8 @@ def load_report_for_book(*,db_folder,strategy,market):
 
 def format_report_1(df0):
 	# --
-	# --
-	# --
 	pd.set_option('future.no_silent_downcasting', True)
 	# --
-	# --
-	# --
-	symbol_columns = filter(lambda cc: cc[0].isupper(), df0.columns)
 	float_columns = [ 'principle', 'dividend', 'txn balance', 'cash value', 'market value', 'total value', 'bmk mkt val', '$ alpha' ]
 	int_columns = [ 'maxpos', '#position', '#empty slot' ]
 	df1 = df0.transpose()
@@ -354,17 +306,13 @@ def load_openpos_for_portf(*,db_folder,book,portf):
 	return openpos[1].iloc[:,:2]
 
 def load_other_holdings_for_acct(*,db_folder,account):
-	df0 = oms_io.load_other_holdings_for_acct__bk_rpt(**locals())
-	return df0
+	return __load_other_holdings_for_acct__bk_rpt(**locals())
 
 def load_account_position_report(*,db_folder,account):
-	acct_folder= db_path(db_folder=db_folder,strategy=account)
-	report = pd.read_csv(f"{acct_folder}/position_report.csv",index_col='line#')
-	return report
+	return acctposrpt_u_io.load(db_dir=db_folder,account=account).df.copy()
 
 def write_account_position_report(*,db_folder,account,report):
-	acct_folder= db_path(db_folder=db_folder,strategy=account)
-	report.to_csv(f"{acct_folder}/position_report.csv",index_label='line#')
+	acctposrpt_u_io.save(db_dir=db_folder,account=account,report_df=report)
 
 def parse_portf_name(portf):
 	parser = re.compile('^(.*)_(n100|s500|r1000)[_|]([A-Z_a-z0-9]*)$')
@@ -412,9 +360,6 @@ def compare_account_portfs_holding(*,db_folder,account):
 	# !!
 	# !! can only do this after other_holding is expanded to account_holding dimension !!
 	# !!
-	# -- rm -- account_holding['account_holding'].fillna(0,inplace=True)
-	# -- rm -- account_holding['portfs_holding'].fillna(0,inplace=True)
-	# -- rm -- account_holding['other_holding'].fillna(0,inplace=True)
 	account_holding['account_holding'] = account_holding['account_holding'].fillna(0)
 	account_holding['portfs_holding'] = account_holding['portfs_holding'].fillna(0)
 	account_holding['other_holding'] = account_holding['other_holding'].fillna(0)
@@ -495,10 +440,9 @@ def format_all_strats_summary(df_strats):
 # --
 # --
 def parse_options(argv):
-	# portf = sys.argv[0].replace("merge_exec__strat1_0LPAF2_", "").replace(".py", "")
-	portf = f"strat1_0LPAF2_{sys.argv[1]}"
-	book = sys.argv[2]
-	in_opt = sys.argv[3:]
+	portf = f"strat1_0LPAF2_{argv[1]}"
+	book = argv[2]
+	in_opt = argv[3:]
 	options = {
 		"portf" : portf,
 		"book" : book,

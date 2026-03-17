@@ -24,13 +24,13 @@ def process_account_div(db_dir, target_account, auto_commit=True):
 	if(auto_commit):
 		op_merge_div_staging.commit_result(div_staging_merge_result)
 	# --
-	# -- PORRTFOLIO DIV ALLOC MERGE
+	# -- PORTFOLIO DIV ALLOC MERGE
 	# --
 	print("#"*120)
 	print("# div staging merge ")
 	print("#"*120)
 	print(div_staging_merge_result[1], "[tail]")
-	display(div_staging_merge_result[1].df.tail(10))
+	print(div_staging_merge_result[1].df.tail(10).to_string())
 	# --
 	div_alloc_objects = op_alloc_div.load_required_objects(db_dir=db_dir, account=target_account)
 	div_alloc_merge_results = op_alloc_div.merge(*div_alloc_objects)
@@ -47,12 +47,12 @@ def process_account_div(db_dir, target_account, auto_commit=True):
 		print("# div staging merge (after posting to portfolio)")
 		print("#"*120)
 		print(acctdiv, "[tail]")
-		display(acctdiv.df.tail(10))
+		print(acctdiv.df.tail(10).to_string())
 		# --
 		for strat_portf,div_alloc_merge in div_alloc_merge_results.items():
 			_,portf_dtxn,_ = div_alloc_merge
 			print(portf_dtxn, "[tail]")
-			display(portf_dtxn.df.tail())
+			print(portf_dtxn.df.tail().to_string())
 	else:
 		print("*** NO_NEW_DIV ***")
 		print("*** NO_NEW_DIV ***")

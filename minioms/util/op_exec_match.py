@@ -1,21 +1,11 @@
-from ..oms_db.classes_io import AccountOrders_IO
 from ..obj.AccountOrders import io_utility as acctord_io
-from ..obj.AccountOrders import br_utility as acctord_br
-from ..oms_db.classes_io import AcctDailyOrders_IO
 from ..obj.AcctDailyOrders import io_utility as acctdord_io
-from ..obj.AcctDailyOrders import br_utility as acctdord_br
-from ..oms_db.classes_io import Executions_IO
 from ..obj.Executions import io_utility as executions_io
 from ..obj.Executions import br_utility as executions_br
 from ..oms_db.classes_io import Matchings_IO
-from ..obj.Matchings import io_utility as matchings_io
-from ..obj.Matchings import br_utility as matchings_br
 from ..oms_db.classes_io import Allocations_IO
-from ..obj.Allocations import io_utility as allocations_io
-from ..obj.Allocations import br_utility as allocations_br
 from jackutil.microfunc import types_validate
 import pandas as pd
-import numpy as np
 
 class op_exec_match:
 	# --
@@ -65,15 +55,15 @@ def account_orders_and_executions_match(orders,executions):
 	if(len(orders)==0):
 		return (None,None,None)
 	# --
-	orders.columns = ['symbol','order_unit']
-	executions.columns = ['date','symbol','exec_unit','price','amount','pkey']
+	orders = orders.rename(columns={'unit':'order_unit'},errors='raise')
+	executions = executions.rename(columns={'unit':'exec_unit'},errors='raise')
 	# --
 	matching = pd.merge(orders, executions, on='symbol', how='outer')
 	matching.loc[:,'status'] = 'diff-qty'
 	matching.loc[matching['order_unit'].isnull(),'status'] = 'exec-wo-order'
 	matching.loc[matching['exec_unit'].isnull(),'status'] = 'missing-exec'
 	matching.loc[matching['exec_unit']==matching['order_unit'],'status'] = 'matched'
-	matching.columns = ['symbol','ord_qty','date','exec_qty','exec_price','ttl_cost','exec_pkey','match']
+	matching = matching.rename(columns={'order_unit':'ord_qty','exec_unit':'exec_qty','price':'exec_price','amount':'ttl_cost','pkey':'exec_pkey','status':'match'},errors='raise')
 	matching = matching[ ['date','symbol','ord_qty','exec_qty','exec_price','ttl_cost','match','exec_pkey'] ]
 	# --
 	matched = matching[matching['match']=='matched']
